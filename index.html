@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat2Data Pro - Ananher</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root { --primary: #007bff; --success: #28a745; --bg: #f4f7f9; }
+        body { font-family: 'PingFang SC', system-ui, sans-serif; display: flex; margin: 0; background: var(--bg); height: 100vh; overflow: hidden; }
+        .main { flex: 1; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        .header-card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .config-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none; }
+        .upload-zone { border: 2px dashed var(--primary); padding: 20px; border-radius: 12px; text-align: center; background: #f8faff; cursor: pointer; transition: 0.3s; }
+        .upload-zone.ready { border-color: var(--success); background: #f6fff8; }
+        .chat-box { flex: 1; background: #fff; border-radius: 12px; padding: 20px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 15px; }
+        
+        /* 聊天氣泡美化 */
+        .user-msg-wrapper { text-align: right; margin: 15px 0; }
+        .user-msg { background: var(--primary); color: white; padding: 10px 15px; border-radius: 15px 15px 0 15px; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .ai-card { background: #fff; padding: 15px; border-left: 5px solid var(--primary); margin: 15px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .ai-card table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px; }
+        .ai-card th, .ai-card td { border: 1px solid #eee; padding: 8px; text-align: left; }
+        .input-bar { display: flex; gap: 10px; }
+        #userQ { flex: 1; padding: 15px; border: 2px solid #ddd; border-radius: 10px; outline: none; }
+        .send-btn { background: var(--primary); color: white; padding: 0 30px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        .sidebar { width: 240px; background: #fff; border-left: 1px solid #eee; padding: 20px 10px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .qr-code { width: 140px; height: 140px; margin: 15px 0; border: 1px solid #eee; padding: 5px; }
+        .copy-hint { cursor: pointer; color: var(--primary); transition: 0.3s; padding: 5px; border-radius: 5px; }
+        .copy-hint:hover { background: #f0f7ff; }
+    </style>
+</head>
+<body>
+    <div class="main">
+        <div class="header-card">
+            <div class="config-grid">
+                <input type="password" id="apiKey" placeholder="API Key">
+                <input type="text" id="baseUrl" value="https://api.openai.com/v1">
+                <input type="text" id="modelName" value="DeepSeek-V3">
+                <input type="hidden" id="dbPath">
+            </div>
+            <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <div id="statusIcon" style="font-size: 24px;">📊</div>
+                <div id="statusText" style="color: var(--primary); font-weight: bold;">點擊上傳數據</div>
+                <div style="font-size: 11px; color: #999; margin-top: 5px;">支持 .xlsx .xls .csv</div>
+                <div id="fileLabel" style="display:none; color: var(--success); font-size: 12px; margin-top:5px;">✅ <span id="targetFileName"></span></div>
+                <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display:none" onchange="handleUpload()">
+            </div>
+        </div>
+        <div class="chat-box" id="chat"></div>
+        <div class="input-bar">
+            <input type="text" id="userQ" placeholder="輸入問題..." onkeypress="if(event.keyCode==13) ask()">
+            <button class="send-btn" id="sendBtn" onclick="ask()">發送</button>
+        </div>
+    </div>
+    <div class="sidebar">
+        <h3>Ananher</h3>
+        <img src="wechat_qr.jpg" class="qr-code">
+        <div class="copy-hint" onclick="copyWechat()" id="copyArea">
+            <b>WeChat:</b> <span id="wechatId">252500112</span>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("%c🚀 Chat2Data Pro 啟動成功", "color: #007bff; font-weight: bold; font-size: 14px;");
+            console.log("📍 當前路徑: " + window.location.host);
+        });
+
+        function copyWechat() {
+            const text = document.getElementById('wechatId').innerText;
+            const area = document.getElementById('copyArea');
+            navigator.clipboard.writeText(text).then(() => {
+                const original = area.innerHTML;
+                area.innerHTML = "<b style='color:var(--success)'>✅ 已複製微信號</b>";
+                setTimeout(() => { area.innerHTML = original; }, 2000);
+            });
+        }
+
+        async function handleUpload() {
+            const file = document.getElementById('fileInput').files[0];
+            if(!file) return;
+            document.getElementById('statusText').innerText = "⏳ 解析中...";
+            const fd = new FormData();
+            fd.append("file", file);
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: fd });
+                const data = await res.json();
+                if(data.status === "success") {
+                    document.getElementById('dbPath').value = data.db_path;
+                    document.getElementById('statusIcon').innerText = "✅";
+                    document.getElementById('statusText').innerText = "就緒";
+                    document.getElementById('dropZone').classList.add('ready');
+                    document.getElementById('fileLabel').style.display = "block";
+                    document.getElementById('targetFileName').innerText = file.name;
+                }
+            } catch (e) { alert("上傳失敗"); }
+        }
+
+        async function ask() {
+            const input = document.getElementById('userQ');
+            const btn = document.getElementById('sendBtn');
+            const q = input.value.trim();
+            const db = document.getElementById('dbPath').value;
+            if(!db || !q) return;
+
+            const chat = document.getElementById('chat');
+            chat.innerHTML += `<div class="user-msg-wrapper"><span class="user-msg">${q}</span></div>`;
+            
+            const loadingId = "loading-" + Date.now();
+            chat.innerHTML += `<div class="ai-card" id="${loadingId}">⏳ AI 正在深度分析數據中...</div>`;
+            chat.scrollTop = chat.scrollHeight;
+
+            input.value = ''; input.disabled = true; btn.disabled = true;
+
+            try {
+                const res = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        question: q, api_key: document.getElementById('apiKey').value,
+                        base_url: document.getElementById('baseUrl').value,
+                        model_name: document.getElementById('modelName').value, db_path: db
+                    })
+                });
+                const data = await res.json();
+                document.getElementById(loadingId).innerHTML = marked.parse(data.answer);
+            } catch (e) { 
+                document.getElementById(loadingId).innerHTML = `<span style="color:red">分析錯誤</span>`;
+            } finally { 
+                input.disabled = false; btn.disabled = false; input.focus(); 
+                chat.scrollTop = chat.scrollHeight; 
+            }
+        }
+    </script>
+</body>
+</html>
