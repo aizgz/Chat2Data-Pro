@@ -2,86 +2,102 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat2Data Pro - Ananher</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        :root { --primary: #007bff; --success: #28a745; --bg: #f4f7f9; }
-        body { font-family: 'PingFang SC', system-ui, sans-serif; display: flex; margin: 0; background: var(--bg); height: 100vh; overflow: hidden; }
-        .main { flex: 1; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
-        .header-card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        .config-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none; }
-        .upload-zone { border: 2px dashed var(--primary); padding: 20px; border-radius: 12px; text-align: center; background: #f8faff; cursor: pointer; transition: 0.3s; }
+        :root { --primary: #007bff; --success: #28a745; --bg: #f0f2f5; --card-bg: #ffffff; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; display: flex; margin: 0; background: var(--bg); height: 100vh; }
+        
+        /* 布局 */
+        .main { flex: 1; display: flex; flex-direction: column; padding: 25px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .header { background: var(--card-bg); padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .config-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 15px; }
+        input { padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: 0.3s; }
+        input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(0,123,255,0.1); }
+        
+        /* 上傳區域 */
+        .upload-zone { border: 2px dashed #d0d7de; padding: 25px; border-radius: 12px; text-align: center; background: #fafbfc; cursor: pointer; transition: 0.3s; }
+        .upload-zone:hover { border-color: var(--primary); background: #f0f7ff; }
         .upload-zone.ready { border-color: var(--success); background: #f6fff8; }
-        .chat-box { flex: 1; background: #fff; border-radius: 12px; padding: 20px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 15px; }
-        
-        /* 聊天氣泡美化 */
+
+        /* 建議按鈕 */
+        #suggestion-container { display: none; margin-bottom: 15px; }
+        .suggestion-list { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+        .suggestion-btn { 
+            background: #fff; border: 1px solid var(--primary); color: var(--primary); 
+            padding: 8px 18px; border-radius: 20px; font-size: 13px; cursor: pointer; 
+            transition: 0.3s; animation: fadeIn 0.5s;
+        }
+        .suggestion-btn:hover { background: var(--primary); color: #fff; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,123,255,0.2); }
+
+        /* 聊天窗口 */
+        .chat-box { flex: 1; background: var(--card-bg); border-radius: 15px; padding: 20px; overflow-y: auto; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 20px; border: 1px solid #eef0f2; }
         .user-msg-wrapper { text-align: right; margin: 15px 0; }
-        .user-msg { background: var(--primary); color: white; padding: 10px 15px; border-radius: 15px 15px 0 15px; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .ai-card { background: #fff; padding: 15px; border-left: 5px solid var(--primary); margin: 15px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .user-msg { background: var(--primary); color: white; padding: 12px 18px; border-radius: 18px 18px 2px 18px; display: inline-block; max-width: 80%; }
+        .ai-card { background: #f8f9fa; padding: 18px; border-radius: 15px; border-left: 5px solid var(--primary); margin: 15px 0; line-height: 1.6; animation: slideIn 0.3s; }
         
-        .ai-card table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px; }
-        .ai-card th, .ai-card td { border: 1px solid #eee; padding: 8px; text-align: left; }
-        .input-bar { display: flex; gap: 10px; }
-        #userQ { flex: 1; padding: 15px; border: 2px solid #ddd; border-radius: 10px; outline: none; }
-        .send-btn { background: var(--primary); color: white; padding: 0 30px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        .sidebar { width: 240px; background: #fff; border-left: 1px solid #eee; padding: 20px 10px; text-align: center; display: flex; flex-direction: column; align-items: center; }
-        .qr-code { width: 140px; height: 140px; margin: 15px 0; border: 1px solid #eee; padding: 5px; }
-        .copy-hint { cursor: pointer; color: var(--primary); transition: 0.3s; padding: 5px; border-radius: 5px; }
-        .copy-hint:hover { background: #f0f7ff; }
+        /* 側邊欄 */
+        .sidebar { width: 260px; background: #fff; border-left: 1px solid #eee; padding: 30px 15px; display: flex; flex-direction: column; align-items: center; }
+        .qr-code { width: 160px; height: 160px; border-radius: 12px; padding: 8px; border: 1px solid #eee; margin-bottom: 15px; }
+        .copy-hint { cursor: pointer; color: var(--primary); font-weight: bold; padding: 10px; border-radius: 8px; background: #f0f7ff; width: 100%; text-align: center; }
+
+        .input-bar { display: flex; gap: 12px; }
+        #userQ { flex: 1; padding: 15px; border: 1px solid #ddd; border-radius: 12px; font-size: 15px; }
+        .send-btn { background: var(--primary); color: white; border: none; padding: 0 35px; border-radius: 12px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .send-btn:hover { background: #0056b3; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
     </style>
 </head>
 <body>
     <div class="main">
-        <div class="header-card">
+        <div class="header">
             <div class="config-grid">
-                <input type="password" id="apiKey" placeholder="API Key">
+                <input type="password" id="apiKey" placeholder="🔑 API Key (選填)">
                 <input type="text" id="baseUrl" value="https://api.openai.com/v1">
                 <input type="text" id="modelName" value="DeepSeek-V3">
                 <input type="hidden" id="dbPath">
             </div>
             <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-                <div id="statusIcon" style="font-size: 24px;">📊</div>
-                <div id="statusText" style="color: var(--primary); font-weight: bold;">點擊上傳數據</div>
-                <div style="font-size: 11px; color: #999; margin-top: 5px;">支持 .xlsx .xls .csv</div>
-                <div id="fileLabel" style="display:none; color: var(--success); font-size: 12px; margin-top:5px;">✅ <span id="targetFileName"></span></div>
+                <div id="statusIcon" style="font-size: 28px;">📂</div>
+                <div id="statusText" style="font-weight: bold; margin-top: 5px;">點擊上傳 Excel 或 CSV 數據</div>
+                <div id="fileLabel" style="display:none; color: var(--success); font-size: 13px; margin-top:8px;">✅ 已載入: <span id="targetFileName"></span></div>
                 <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display:none" onchange="handleUpload()">
             </div>
         </div>
-        <div class="chat-box" id="chat"></div>
+
+        <div id="suggestion-container">
+            <div style="font-size: 13px; color: #666;">💡 數據分析建議：</div>
+            <div class="suggestion-list" id="suggestion-list"></div>
+        </div>
+
+        <div class="chat-box" id="chat">
+            <div class="ai-card">您好！我是 <b>Chat2Data Pro</b>。上傳數據後，我將自動為您生成分析建議。</div>
+        </div>
+
         <div class="input-bar">
-            <input type="text" id="userQ" placeholder="輸入問題..." onkeypress="if(event.keyCode==13) ask()">
-            <button class="send-btn" id="sendBtn" onclick="ask()">發送</button>
+            <input type="text" id="userQ" placeholder="問問你的數據..." onkeypress="if(event.keyCode==13) ask()">
+            <button class="send-btn" id="sendBtn" onclick="ask()">分析</button>
         </div>
     </div>
+
     <div class="sidebar">
-        <h3>Ananher</h3>
+        <h3 style="margin-bottom: 20px;">Ananher</h3>
         <img src="wechat_qr.jpg" class="qr-code">
         <div class="copy-hint" onclick="copyWechat()" id="copyArea">
-            <b>WeChat:</b> <span id="wechatId">252500112</span>
+            WeChat: <span id="wechatId">252500112</span>
         </div>
+        <p style="margin-top: 20px; font-size: 12px; color: #bbb;">Chat2Data Pro v1.5.0</p>
     </div>
+
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("%c🚀 Chat2Data Pro 啟動成功", "color: #007bff; font-weight: bold; font-size: 14px;");
-            console.log("📍 當前路徑: " + window.location.host);
-        });
-
-        function copyWechat() {
-            const text = document.getElementById('wechatId').innerText;
-            const area = document.getElementById('copyArea');
-            navigator.clipboard.writeText(text).then(() => {
-                const original = area.innerHTML;
-                area.innerHTML = "<b style='color:var(--success)'>✅ 已複製微信號</b>";
-                setTimeout(() => { area.innerHTML = original; }, 2000);
-            });
-        }
-
         async function handleUpload() {
             const file = document.getElementById('fileInput').files[0];
             if(!file) return;
-            document.getElementById('statusText').innerText = "⏳ 解析中...";
+            document.getElementById('statusText').innerText = "⏳ 正在處理數據...";
             const fd = new FormData();
             fd.append("file", file);
             try {
@@ -89,31 +105,48 @@
                 const data = await res.json();
                 if(data.status === "success") {
                     document.getElementById('dbPath').value = data.db_path;
-                    document.getElementById('statusIcon').innerText = "✅";
-                    document.getElementById('statusText').innerText = "就緒";
+                    document.getElementById('statusText').innerText = "數據上傳成功！";
                     document.getElementById('dropZone').classList.add('ready');
                     document.getElementById('fileLabel').style.display = "block";
                     document.getElementById('targetFileName').innerText = file.name;
+                    loadSuggestions();
                 }
-            } catch (e) { alert("上傳失敗"); }
+            } catch (e) { alert("上傳出錯"); }
+        }
+
+        async function loadSuggestions() {
+            const url = document.getElementById('baseUrl').value;
+            const key = document.getElementById('apiKey').value;
+            const model = document.getElementById('modelName').value;
+            try {
+                const res = await fetch(`/get_suggestions?api_key=${key}&base_url=${url}&model_name=${model}`);
+                const data = await res.json();
+                const list = document.getElementById('suggestion-list');
+                list.innerHTML = '';
+                data.suggestions.forEach(text => {
+                    const btn = document.createElement('button');
+                    btn.className = 'suggestion-btn';
+                    btn.innerText = text;
+                    btn.onclick = () => { document.getElementById('userQ').value = text; ask(); };
+                    list.appendChild(btn);
+                });
+                document.getElementById('suggestion-container').style.display = 'block';
+            } catch (e) {}
         }
 
         async function ask() {
             const input = document.getElementById('userQ');
-            const btn = document.getElementById('sendBtn');
             const q = input.value.trim();
             const db = document.getElementById('dbPath').value;
-            if(!db || !q) return;
+            if(!q || !db) return;
 
             const chat = document.getElementById('chat');
             chat.innerHTML += `<div class="user-msg-wrapper"><span class="user-msg">${q}</span></div>`;
-            
             const loadingId = "loading-" + Date.now();
-            chat.innerHTML += `<div class="ai-card" id="${loadingId}">⏳ AI 正在深度分析數據中...</div>`;
+            chat.innerHTML += `<div class="ai-card" id="${loadingId}">⏳ AI 正在深度分析中...</div>`;
             chat.scrollTop = chat.scrollHeight;
 
-            input.value = ''; input.disabled = true; btn.disabled = true;
-
+            input.value = ''; input.disabled = true;
             try {
                 const res = await fetch('/ask', {
                     method: 'POST',
@@ -126,12 +159,16 @@
                 });
                 const data = await res.json();
                 document.getElementById(loadingId).innerHTML = marked.parse(data.answer);
-            } catch (e) { 
-                document.getElementById(loadingId).innerHTML = `<span style="color:red">分析錯誤</span>`;
-            } finally { 
-                input.disabled = false; btn.disabled = false; input.focus(); 
-                chat.scrollTop = chat.scrollHeight; 
-            }
+            } catch (e) { document.getElementById(loadingId).innerText = "❌ 發生錯誤"; }
+            finally { input.disabled = false; input.focus(); chat.scrollTop = chat.scrollHeight; }
+        }
+
+        function copyWechat() {
+            const text = document.getElementById('wechatId').innerText;
+            navigator.clipboard.writeText(text);
+            const area = document.getElementById('copyArea');
+            area.innerText = "✅ 已複製";
+            setTimeout(() => { area.innerText = "WeChat: " + text; }, 2000);
         }
     </script>
 </body>
