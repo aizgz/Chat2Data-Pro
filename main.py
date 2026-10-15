@@ -106,7 +106,7 @@ async def get_qr():
 
 if __name__ == "__main__":
     # 云端环境不需要打开浏览器，直接打印监听地址
-    print(f"🚀 Chat2Data Pro 已启动，正在监听容器内部端口: http://0.0.0.0:8000")
+    print(f"🚀 Chat2Data Pro 已启动，正在监听容器内部端口: http://0.0.0.0:8244")
     
     # 启动 Uvicorn 服务，绑定到 0.0.0.0 允许外部访问
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_config=None)
+    uvicorn.run(app, host="0.0.0.0", port=8244, log_config=None)
