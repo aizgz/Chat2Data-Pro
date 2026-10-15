@@ -1,16 +1,13 @@
 import uvicorn
-#import webbrowser
 import os
 import sys
 import pandas as pd
 import sqlite3
 import io
-#import socket
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from threading import Timer
 from test_agent import SQLAutoAgent
 
 # --- 配置 ---
@@ -86,7 +83,8 @@ async def get_suggestions(api_key: str = "", base_url: str = "", model_name: str
         # 過濾 AI 可能包含的廢話
         suggestions = [s.strip() for s in raw_res.split('\n') if len(s.strip()) > 4][:3]
         return {"suggestions": suggestions}
-    except:
+    except Exception as e:
+        # 建議將異常捕獲寫為具體的 Exception，避免捕獲 SystemExit 等關鍵信號
         return {"suggestions": ["分析數據整體分布", "查詢數值最高項", "按類別匯總數據"]}
 
 @app.post("/ask")
@@ -106,22 +104,9 @@ async def serve_index():
 async def get_qr():
     return FileResponse(resource_path("wechat_qr.jpg"))
 
-def get_host_ip():
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('8.8.8.8', 80))
-        ip = s.getsockname()[0]
-    except:
-        ip = "127.0.0.1"
-    finally:
-        s.close()
-    return ip
-
-#def open_browser():
-#    webbrowser.open("http://127.0.0.1:8000")
-
 if __name__ == "__main__":
-#    local_ip = get_host_ip()
-    print(f"🚀 Chat2Data Pro 已啟動: http://0.0.0.0:8000")
-#    Timer(1.5, open_browser).start()
+    # 云端环境不需要打开浏览器，直接打印监听地址
+    print(f"🚀 Chat2Data Pro 已启动，正在监听容器内部端口: http://0.0.0.0:8000")
+    
+    # 启动 Uvicorn 服务，绑定到 0.0.0.0 允许外部访问
     uvicorn.run(app, host="0.0.0.0", port=8000, log_config=None)
