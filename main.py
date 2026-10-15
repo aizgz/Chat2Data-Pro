@@ -1,11 +1,11 @@
 import uvicorn
-import webbrowser
+#import webbrowser
 import os
 import sys
 import pandas as pd
 import sqlite3
 import io
-import socket
+#import socket
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -117,11 +117,11 @@ def get_host_ip():
         s.close()
     return ip
 
-def open_browser():
-    webbrowser.open("http://127.0.0.1:8000")
+#def open_browser():
+#    webbrowser.open("http://127.0.0.1:8000")
 
 if __name__ == "__main__":
-    local_ip = get_host_ip()
-    print(f"🚀 Chat2Data Pro 已啟動: http://127.0.0.1:8000")
-    Timer(1.5, open_browser).start()
+#    local_ip = get_host_ip()
+    print(f"🚀 Chat2Data Pro 已啟動: http://0.0.0.0:8000")
+#    Timer(1.5, open_browser).start()
     uvicorn.run(app, host="0.0.0.0", port=8000, log_config=None)
